@@ -73,7 +73,6 @@ def knn(X_train, y_train, X_test, k):
         most_common_label, _ = torch.mode(k_nearest_labels, dim=1)
         # 预测标签
         predictions.append(most_common_label)
-    # return torch.tensor(predictions, device=device)
     return torch.cat(predictions)
 # 预测测试集标签
 predicted_labels = knn(train_images, train_labels, test_images, k=4)
@@ -81,6 +80,5 @@ predicted_labels = knn(train_images, train_labels, test_images, k=4)
 # 计算准确率
 # np.mean用于计算数组的平均值，predicted_labels == test_labels会得到布尔值0和1
 # True为1，False为0
-# test_labels = test_labels.to(device)
 accuracy = (predicted_labels == test_labels).float().mean()
 print(accuracy)
