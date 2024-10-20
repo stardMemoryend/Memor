@@ -119,7 +119,7 @@ def visualize_weights(W):
         ax.axis('off')  # 关闭当前子图的坐标轴
     plt.show()  # 显示整个图形
 
-visualize_weights(best_W)
+visualize_weights(W)
 
 
 
