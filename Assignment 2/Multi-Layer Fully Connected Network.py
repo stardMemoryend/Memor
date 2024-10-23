@@ -38,7 +38,7 @@ criterion = nn.CrossEntropyLoss()
 # 定义优化器
 optimizer = optim.SGD(net.parameters(), lr=0.001)
 
-# 方式一：数据分批放入GPU
+############# 方式一：数据分批放入GPU #############
 num_epochs = 10
 for epoch in range(num_epochs):
     net.train()  # 调整为训练模式
@@ -76,7 +76,7 @@ for epoch in range(num_epochs):
 
 
 
-# 方式2：先将数据集放到GPU上
+############ 方式二：先将数据集放到GPU上 ############
 def transfer(loader):
     X = []
     y = []
