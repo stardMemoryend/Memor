@@ -5,7 +5,7 @@ import torch.utils.data
 import torch.nn as nn
 import torch.optim as optim
 
-# 手动实现
+############### 手动实现 ##############
 
 # 初始化参数
 def init_bn_params(input_size):
@@ -138,7 +138,10 @@ with torch.no_grad():
     print(accuracy)
 
 
-# 库函数实现
+
+
+############ 库函数实现 ###############
+
 class TwoLayerNet(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super(TwoLayerNet, self).__init__()
