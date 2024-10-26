@@ -5,8 +5,9 @@ import torch.nn.functional as F
 import torchvision.transforms as transforms
 import torchvision.datasets
 import torch.utils.data
+import matplotlib.pyplot as plt
 
-################## 第一种写法 #################
+############ 第一种写法 ################
 class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
@@ -33,7 +34,7 @@ class CNN(nn.Module):
 
 
 
-############## 第二种写法 ###############
+############ 第二种写法 ###############
 class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
@@ -92,23 +93,28 @@ def transfer(loader):
 X_train, y_train = transfer(train_loader)
 X_test, y_test = transfer(test_loader)
 
-num_epochs = 10
+num_epochs = 50
+train_losses = []
+test_losses = []
+
 for epoch in range(num_epochs):
     net.train()  # 调整为训练模式
+    train_loss = 0
     for batch_idx in range(0, len(X_train), 100):
         X_batch = X_train[batch_idx:batch_idx + 100]
         y_batch = y_train[batch_idx:batch_idx + 100]
         # 前向传播
         outputs = net(X_batch)
-        loss = criterion(outputs, y_batch)
+        train_loss = criterion(outputs, y_batch)
 
         # 反向传播
         optimizer.zero_grad()   #  梯度清零
-        loss.backward()
+        train_loss.backward()
         optimizer.step()
 
         if (batch_idx + 100) % 10000 == 0:
-            print(f'Epoch: {epoch}, Step: {(batch_idx+100) / 100}, Loss: {loss}')
+            print(f'Epoch: {epoch}, Step: {(batch_idx+100) / 100}, Loss: {train_loss}')
+    train_losses.append(train_loss.item())
 
     net.eval()  # 调整为验证模式
     with torch.no_grad():
@@ -124,12 +130,21 @@ for epoch in range(num_epochs):
         accuracy = correct / total
         print(accuracy)
 
+    # 记录测试集上损失函数的变化情况
+    with torch.no_grad():
+        for batch_idx in range(0, len(X_test), 100):
+            X_batch = X_train[batch_idx:batch_idx + 100]
+            y_batch = y_train[batch_idx:batch_idx + 100]
+            outputs = net(X_batch)
+            test_loss = criterion(outputs, y_batch)
+        test_losses.append(test_loss.item())
 
 # 在测试集上进行最终评测
 net.eval()
 with torch.no_grad():
     correct = 0
     total = 0
+
     for batch_idx in range(0, len(X_test), 100):
         X_batch = X_test[batch_idx:batch_idx + 100]
         y_batch = y_test[batch_idx:batch_idx + 100]
@@ -140,5 +155,12 @@ with torch.no_grad():
     accuracy = correct / total
     print(accuracy)
 
-
+plt.figure(figsize=(10, 5))
+plt.plot(range(1, num_epochs + 1), train_losses, label='train_loss', color='blue')
+plt.plot(range(1, num_epochs + 1), test_losses, label='test_loss', color='red')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.title('Loss')
+plt.legend()
+plt.show()
 
