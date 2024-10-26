@@ -6,7 +6,7 @@ import torchvision.transforms as transforms
 import torchvision.datasets
 import torch.utils.data
 
-# 第一种写法
+################## 第一种写法 #################
 class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
@@ -31,7 +31,9 @@ class CNN(nn.Module):
         out4 = self.fc2(out3)
         return out4
 
-# 第二种写法
+
+
+############## 第二种写法 ###############
 class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
