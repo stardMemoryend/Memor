@@ -1,0 +1,79 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import numpy as np
+
+class LSTM(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size):
+        super(LSTM, self).__init__()
+        self.hidden_size = hidden_size
+        self.output_size = output_size
+        # 输入门
+        self.Wxi = nn.Parameter(torch.randn(hidden_size, input_size) * 0.01)
+        self.Whi = nn.Parameter(torch.randn(hidden_size, hidden_size) * 0.01)
+        self.bi = nn.Parameter(torch.zeros(hidden_size, 1))
+
+        # 遗忘门
+        self.Wxf = nn.Parameter(torch.randn(hidden_size, input_size) * 0.01)
+        self.Whf = nn.Parameter(torch.randn(hidden_size, hidden_size) * 0.01)
+        self.bf = nn.Parameter(torch.zeros(hidden_size, 1))
+
+        # 输出门
+        self.Wxo = nn.Parameter(torch.randn(hidden_size, input_size * 0.01))
+        self.Who = nn.Parameter(torch.randn(hidden_size, hidden_size) * 0.01)
+        self.bo = nn.Parameter(torch.zeros(hidden_size, 1))
+
+        # 候选细胞状态
+        self.Wxc = nn.Parameter(torch.randn(hidden_size, input_size) * 0.01)
+        self.Whc = nn.Parameter(torch.randn(hidden_size, hidden_size) * 0.01)
+        self.bc = nn.Parameter(torch.zeros(hidden_size, 1))
+
+        # 输出层
+        self.Why = nn.Parameter(torch.randn(output_size, hidden_size) * 0.01)
+        self.by = nn.Parameter(torch.zeros(output_size, 1))
+
+    def forward(self, inputs, h_prev, c_prev):
+        seq_length, batch_size = inputs.size()
+        # h为隐藏状态, c为候选细胞状态
+        h = torch.zeros(seq_length + 1, batch_size, self.hidden_size)
+        c = torch.zeros(seq_length + 1, batch_size, self.hidden_size)
+        # h,c的最后一个被初始化为上一步的隐藏状态
+        h[-1] = h_prev
+        c[-1] = c_prev
+        # 初始化输出, 存储每个时间步的输出
+        y = torch.zeros(seq_length, batch_size, self.output_size)
+
+        for t in range(seq_length): # 对每个时间步
+            it = torch.sigmoid(self.Wxi @ inputs[t] + self.Whi @ h[t-1] + self.bi)
+            ft = torch.sigmoid(self.Wxf @ inputs[t] + self.Whf @ h[t-1] + self.bf)
+            ot = torch.sigmoid(self.Wxo @ inputs[t] + self.Who @ h[t-1] + self.bo)
+            ct_hat = torch.tanh(self.Wxc @ inputs[t] + self.Whc @ h[t-1] + self.bc)
+            c[t] = ft * c[t-1] + it * ct_hat
+            h[t] = ot * torch.tanh(c[t])
+            y[t] = self.why @ h[t] + self.by
+
+        return y, h[-2], c[-2]
+
+def train(model, train_data, val_data, seq_length, batch_size, num_epochs, learning_rate):
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+    for epoch in range(num_epochs):
+        total_loss = 0
+        h_prev = torch.zeros(1, batch_size, model.hidden_size)
+        c_prev = torch.zeros(1, batch_size, model.hidden_size)
+
+        for i in range(0, len(train_data) - seq_length, seq_length):
+            inputs = torch.tensor(train_data[i:i+seq_length], dtype=torch.float32).unsqueeze(1)
+            targets = torch.tensor(train_data[i+1:seq_length+1], dtype=torch.long)
+
+            # 前向传播
+            outputs, h_prev, c_prev = model(inputs, h_prev, c_prev)
+            outputs = outputs.view(-1, outputs.size(-1))
+
+            loss = criterion(outputs, targets)
+            total_loss += loss.item()
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
