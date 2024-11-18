@@ -1,0 +1,148 @@
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+
+import torchvision
+import torchvision.transforms as transforms
+from torch.utils.data import DataLoader
+
+# 数据预处理
+transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+])
+
+# 加载数据集
+trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
+trainloader = DataLoader(trainset, batch_size=64, shuffle=True, num_workers=2)
+
+# 测试集
+testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
+testloader = DataLoader(testset, batch_size=64, shuffle=False, num_workers=2)
+
+# 生成器
+class Generator(nn.Module):
+    def __init__(self, z_dim, img_shape):
+        super(Generator, self).__init__()
+        self.z_dim = z_dim
+        self.img_shape = img_shape
+        self.model = nn.Sequential(
+            nn.Linear(z_dim, 128),
+            nn.ReLU(),
+            nn.Linear(128, 256),
+            nn.ReLU(),
+            nn.Linear(256, 512),
+            nn.ReLU(),
+            nn.Linear(512, int(np.prod(img_shape))),    # 展成一维向量
+            nn.Tanh()
+        )
+
+    def forward(self, z):
+        img = self.model(z)
+        img = img.view(img.size(0), *self.img_shape)    # 重塑成图像形状
+        return img
+
+# 判别器
+class Discriminator(nn.Module):
+    def __init__(self, img_shape):
+        super(Discriminator, self).__init__()
+        self.img_shape = img_shape
+
+        self.model = nn.Sequential(
+            nn.Linear(int(np.prod(img_shape)), 512),
+            nn.LeakyReLU(0.2),   #改进的ReLU
+            nn.Linear(512, 256),
+            nn.LeakyReLU(0.2),
+            nn.Linear(256, 1),   # 二分类任务
+            nn.Sigmoid()    # 概率
+        )
+
+    def forward(self, img):
+        img_flat = img.view(img.size(0), -1)
+        validity = self.model(img_flat)
+        return validity
+
+# 生成器输入噪声向量的维度
+z_dim = 100
+img_shape = (3, 32, 32)
+lr = 0.0002
+num_epochs = 200
+device = torch.device("cuda")
+
+generator = Generator(z_dim, img_shape).to(device)
+discriminator = Discriminator(img_shape).to(device)
+
+# 二元交叉熵损失
+criterion = nn.BCELoss()
+
+optimizer_G = optim.Adam(generator.parameters(), lr=lr, betas=(0.5, 0.999))
+optimizer_D = optim.Adam(discriminator.parameters(), lr=lr, betas=(0.5, 0.999))
+
+for epoch in range(num_epochs):
+    for i, (imgs, _) in enumerate(trainloader):
+        # 真实图像标签
+        real_labels = torch.ones(imgs.size(0), 1).to(device)
+        # 生成图像标签
+        fake_labels = torch.zeros(imgs.size(0), 1).to(device)
+
+        # 真实图像
+        real_imgs = imgs.to(device)
+
+        # 生成图像
+        z = torch.randn(imgs.size(0), z_dim).to(device)
+        fake_imgs = generator(z)
+
+        # 训练判别器
+        optimizer_D.zero_grad()
+
+        # 真实图像的损失
+        real_outputs = discriminator(real_imgs)
+        real_loss = criterion(real_outputs, real_labels)
+
+        # 生成图像的损失
+        fake_outputs = discriminator(fake_imgs.detach())
+        fake_loss = criterion(fake_outputs, fake_labels)
+
+        # 总判别器损失
+        d_loss = real_loss + fake_loss
+        d_loss.backward()
+        optimizer_D.step()
+
+        # 训练生成器
+        optimizer_G.zero_grad()
+
+        # 生成图像的损失
+        fake_outputs = discriminator(fake_imgs)
+        g_loss = criterion(fake_outputs, real_labels)
+        g_loss.backward()
+        optimizer_G.step()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
